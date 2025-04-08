@@ -1,4 +1,6 @@
-import requests
+import os
+
+import httpx
 
 from common import File, LoadFileArgument
 from log import log
@@ -10,7 +12,7 @@ def load_google_sheet(doc_id: LoadFileArgument):
         "format": "xlsx",
     }
 
-    response = requests.get(url, params=params)
+    response = httpx.get(url, params=params)
     if not response.ok:
         return False, f"Failed to download google spreadsheet {response.status_code}"
 
@@ -24,7 +26,7 @@ def load_local_file(path: str):
         with open(path, "rb") as f:
             return True, File(
                 content=f.read(),
-                name=path.split("/")[-1],
+                name=os.path.split(path)[1],
             )
     except FileNotFoundError:
         return False, f"File {path} not found"

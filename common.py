@@ -25,3 +25,14 @@ class Template:
 class LoadFileArgument:
     google_doc_id: str | None = None
     path: str | None = None
+
+
+@dataclass
+class ReportResult:
+    errors: list[str]
+    reports: list[str]
+
+
+@dataclass
+class Error:
+    msg: str

@@ -1,6 +1,6 @@
+import importlib.util
 import subprocess
 from urllib.parse import urlparse
-import importlib.util
 
 import typer
 
@@ -40,7 +40,9 @@ def validate_setup():
         )
 
     try:
-        result = subprocess.run(["pdflatex", "--version"], capture_output=True, text=True)
+        result = subprocess.run(
+            ["pdflatex", "--version"], capture_output=True, text=True
+        )
         if result.returncode:
             ok = False
     except FileNotFoundError:
@@ -50,11 +52,12 @@ def validate_setup():
         )
 
     try:
-        from settings import settings
+        from settings import get_settings
+
+        get_settings()
     except Exception as e:
         ok = False
         error(e)
-        error("Create settings.txt from settings_example.txt and fill with value")
+        error("\nCreate settings.txt from settings_example.txt and fill with value")
 
-    # return ok
     return ok
