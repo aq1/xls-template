@@ -12,4 +12,4 @@ class Settings(BaseSettings):
     yandex_token: str
 
 
-settings = Settings()
+settings = Settings(_cli_exit_on_error=False)
