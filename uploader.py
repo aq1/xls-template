@@ -3,9 +3,10 @@ import os
 
 import httpx
 
-from common import Error, ReportResult
+from common import Error
 from log import log
 from settings import get_settings
+
 
 async def create_dir_if_not_exists(client: httpx.AsyncClient, path: str):
     url = "https://cloud-api.yandex.net/v1/disk/resources"
@@ -63,11 +64,57 @@ async def do_upload_reports(paths: list[str]):
         tasks = [upload_worker(client, path, settings.yandex_path) for path in paths]
         results = await asyncio.gather(*tasks)
         results = list(filter(lambda r: r is not None, results))
-    
+
     return results
 
-def upload_reports(reports: ReportResult):
-    results = asyncio.run(do_upload_reports(reports.reports))
+
+async def share_file_worker(client: httpx.AsyncClient, path: str, ya_disk_prefix: str):
+    params = {
+        "path": ya_disk_prefix + os.path.split(path)[1]
+    }
+    response = await client.put(
+        "https://cloud-api.yandex.net/v1/disk/resources/publish",
+        params=params,
+    )
+    try:
+        response.raise_for_status()
+        response = await client.get(
+            "https://cloud-api.yandex.net/v1/disk/resources",
+            params=params,
+        )
+        response.raise_for_status()
+        data = response.json()
+    except Exception as e:
+        return Error(response.text)
+    return data["public_url"]
+
+
+async def do_share_files(paths: list[str]):
+    settings = get_settings()
+    headers = {"Authorization": f"OAuth {settings.yandex_token}"}
+
+    async with httpx.AsyncClient(headers=headers) as client:
+        tasks = [
+            share_file_worker(client, path, settings.yandex_path) for path in paths
+        ]
+        results = await asyncio.gather(*tasks)
+        results = list(filter(lambda r: r is not None, results))
+
+    return results
+
+
+def upload_reports(filenames: list[str]):
+    results = asyncio.run(do_upload_reports(filenames))
+    errors = list(filter(lambda r: isinstance(r, Error), results))
+
+    if errors:
+        return False, errors
+
+    return True, results
+
+
+def share_files(filenames: list[str]):
+    results = asyncio.run(do_share_files(filenames))
     errors = list(filter(lambda r: isinstance(r, Error), results))
 
     if errors:

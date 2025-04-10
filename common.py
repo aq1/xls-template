@@ -6,7 +6,6 @@ from docx import Document
 
 @dataclass
 class File:
-    name: str
     content: bytes
 
 
@@ -18,7 +17,6 @@ class Sheet:
 @dataclass
 class Template:
     doc: Document
-    name: str
 
 
 @dataclass

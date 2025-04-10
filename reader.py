@@ -1,9 +1,9 @@
 import io
 
-from docx import Document
 from openpyxl import load_workbook
 
 from common import File, Sheet, Template
+from docx import Document
 
 
 def _do_read_rows(file: File):
@@ -15,13 +15,14 @@ def _do_read_rows(file: File):
         if not any(row):
             continue
         rows.append({str(headers[i]): str(row[i]) for i in range(len(headers))})
-    return Sheet(rows=rows)
+    return Sheet(rows=rows[:2])
 
 
 def _do_read_template(file: File):
+    stream = io.BytesIO(file.content)
+    stream.seek(0)
     return Template(
-        doc=Document(io.BytesIO(file.content)),
-        name=file.name,
+        doc=Document(stream),
     )
 
 

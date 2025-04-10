@@ -1,4 +1,3 @@
-import importlib.util
 import subprocess
 from urllib.parse import urlparse
 
@@ -30,34 +29,23 @@ def parse_xlxs_path_argument(value: str):
 def validate_setup():
     ok = True
     try:
-        result = subprocess.run(["pandoc", "--version"], capture_output=True, text=True)
-        if result.returncode:
-            ok = False
-    except FileNotFoundError:
-        ok = False
-        error(
-            "Pandoc not found in path. Install it from here https://pandoc.org/installing.html"
-        )
-
-    try:
-        result = subprocess.run(
-            ["pdflatex", "--version"], capture_output=True, text=True
-        )
-        if result.returncode:
-            ok = False
-    except FileNotFoundError:
-        ok = False
-        error(
-            "pdflatex not found in path. Read instruction how to install it (MiKTeX) here https://pandoc.org/installing.html"
-        )
-
-    try:
         from settings import get_settings
 
-        get_settings()
+        settings = get_settings()
     except Exception as e:
         ok = False
         error(e)
         error("\nCreate settings.txt from settings_example.txt and fill with value")
+        return
+
+    try:
+        result = subprocess.run(
+            [settings.libre_office_path, "--version"], capture_output=True, text=True
+        )
+        if result.returncode:
+            ok = False
+    except FileNotFoundError:
+        ok = False
+        error("Libre Office not found in path")
 
     return ok

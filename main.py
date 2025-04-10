@@ -8,9 +8,10 @@ from common import LoadFileArgument
 from loader import load_file
 from log import error, log
 from reader import read_rows, read_template
+from result_saver import save_results_to_xlsx
 from settings import get_settings
-from uploader import upload_reports
-from worker import run_format_job
+from uploader import share_files, upload_reports
+from worker import run_format_job, run_pdf_converter
 
 app = typer.Typer()
 
@@ -50,27 +51,37 @@ def run(
 
     settings = get_settings()
     os.makedirs(settings.output_dir, exist_ok=True)
+    os.makedirs(settings.docx_output_dir, exist_ok=True)
 
-    log(f"Generating PDFs. Output dir: \"{settings.output_dir}\"")
-    ok, report_results = run_format_job(
+    log(f"Generating Docx. Output dir: {settings.docx_output_dir}")
+
+    ok, filenames = run_format_job(
         sheet=sheet,
         template_file=template_file,
     )
     if not ok:
-        error(f"Failed to generate reports. Got {len(report_results.errors)} errors")
-        for each in report_results.errors:
-            error(f"\t{each.msg}")
-        
-        if not report_results.reports:
-            raise typer.Exit(1)
+        error(f"Failed to generate Docx")
+        raise typer.Exit(1)
+
+    log(f'Generating PDFs. Output dir: "{settings.output_dir}"')
+    ok, filenames = run_pdf_converter(filenames)
+    if not ok:
+        error(f"Failed to generate PDF")
+        raise typer.Exit(1)
 
     log("Uploading PDFs to Yandex Disk.")
-    ok, upload_results = upload_reports(report_results)
+    ok, upload_results = upload_reports(filenames)
     if not ok:
         error("Failed to upload reports")
         for each in upload_results:
             error(f"\t {each.msg}")
-    
+
+    log("Sharing access to uploaded files")
+    ok, urls = share_files(filenames)
+
+    log("Saving results to Xlsx")
+
+    save_results_to_xlsx(xlsx, urls)
     log("[green]Done[/green]")
 
 

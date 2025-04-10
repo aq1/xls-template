@@ -26,7 +26,6 @@ def load_local_file(path: str):
         with open(path, "rb") as f:
             return True, File(
                 content=f.read(),
-                name=os.path.split(path)[1],
             )
     except FileNotFoundError:
         return False, f"File {path} not found"

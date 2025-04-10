@@ -1,3 +1,5 @@
 YANDEX_TOKEN=token-example
 YANDEX_PATH=/reports/
 LIBRE_OFFICE_PATH="C:\Program Files\LibreOffice\program\soffice.exe"
+PDF_NAME_TEMPLATE="{{id}}"
+RESULT_COLUMN_NAME=Презентация

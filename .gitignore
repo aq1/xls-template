@@ -147,3 +147,5 @@ dump.rdb
 settings.txt
 sheet.xlsx
 pdf/
+docx/
+scratch.py
