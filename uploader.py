@@ -8,6 +8,10 @@ from log import log
 from settings import get_settings
 
 
+upload_sem = asyncio.Semaphore(10) 
+share_sem = asyncio.Semaphore(10) 
+
+
 async def create_dir_if_not_exists(client: httpx.AsyncClient, path: str):
     url = "https://cloud-api.yandex.net/v1/disk/resources"
     r = await client.get(url, params={"path": path})
@@ -29,23 +33,24 @@ async def upload_worker(client: httpx.AsyncClient, path: str, ya_disk_prefix: st
         "overwrite": "true",
     }
 
-    response = await client.get(
-        "https://cloud-api.yandex.net/v1/disk/resources/upload",
-        params=params,
-    )
-    if not response.is_success:
-        return Error(response.text)
-
-    try:
-        upload_url = response.json()["href"]
-    except Exception as e:
-        return Error(f"Failed to get upload_url {e}")
-
-    with open(path, "rb") as f:
-        files = {"file": f}
-        response = await client.put(upload_url, files=files)
+    async with upload_sem:
+        response = await client.get(
+            "https://cloud-api.yandex.net/v1/disk/resources/upload",
+            params=params,
+        )
         if not response.is_success:
             return Error(response.text)
+
+        try:
+            upload_url = response.json()["href"]
+        except Exception as e:
+            return Error(f"Failed to get upload_url {e}")
+
+        with open(path, "rb") as f:
+            files = {"file": f}
+            response = await client.put(upload_url, files=files)
+            if not response.is_success:
+                return Error(response.text)
 
     return upload_url
 
@@ -72,20 +77,22 @@ async def share_file_worker(client: httpx.AsyncClient, path: str, ya_disk_prefix
     params = {
         "path": ya_disk_prefix + os.path.split(path)[1]
     }
-    response = await client.put(
-        "https://cloud-api.yandex.net/v1/disk/resources/publish",
-        params=params,
-    )
-    try:
-        response.raise_for_status()
-        response = await client.get(
-            "https://cloud-api.yandex.net/v1/disk/resources",
+
+    async with share_sem:
+        response = await client.put(
+            "https://cloud-api.yandex.net/v1/disk/resources/publish",
             params=params,
         )
-        response.raise_for_status()
-        data = response.json()
-    except Exception as e:
-        return Error(response.text)
+        try:
+            response.raise_for_status()
+            response = await client.get(
+                "https://cloud-api.yandex.net/v1/disk/resources",
+                params=params,
+            )
+            response.raise_for_status()
+            data = response.json()
+        except Exception as e:
+            return Error(response.text)
     return data["public_url"]
 
 
