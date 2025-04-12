@@ -3,7 +3,7 @@ import os
 
 import httpx
 
-from common import Error
+from common import Error, Sheet
 from log import log
 from settings import get_settings
 
@@ -50,18 +50,18 @@ async def upload_worker(client: httpx.AsyncClient, path: str, ya_disk_prefix: st
     return upload_url
 
 
-async def do_upload_reports(paths: list[str]):
+async def do_upload_reports(sheet: Sheet):
     settings = get_settings()
     headers = {"Authorization": f"OAuth {settings.yandex_token}"}
 
     async with httpx.AsyncClient(headers=headers) as client:
         ok, err = await create_dir_if_not_exists(client, settings.yandex_path)
         if ok:
-            log(f"Created yandex directory {settings.yandex_path}")
+            log(f"Created or found yandex directory {settings.yandex_path}")
         else:
             return [Error(f"Failed to create yandex directory {err}")]
 
-        tasks = [upload_worker(client, path, settings.yandex_path) for path in paths]
+        tasks = [upload_worker(client, row.pdf_filename, settings.yandex_path) for row in sheet.rows]
         results = await asyncio.gather(*tasks)
         results = list(filter(lambda r: r is not None, results))
 
@@ -89,13 +89,13 @@ async def share_file_worker(client: httpx.AsyncClient, path: str, ya_disk_prefix
     return data["public_url"]
 
 
-async def do_share_files(paths: list[str]):
+async def do_share_files(sheet: Sheet):
     settings = get_settings()
     headers = {"Authorization": f"OAuth {settings.yandex_token}"}
 
     async with httpx.AsyncClient(headers=headers) as client:
         tasks = [
-            share_file_worker(client, path, settings.yandex_path) for path in paths
+            share_file_worker(client, row.pdf_filename, settings.yandex_path) for row in sheet.rows
         ]
         results = await asyncio.gather(*tasks)
         results = list(filter(lambda r: r is not None, results))
@@ -103,21 +103,23 @@ async def do_share_files(paths: list[str]):
     return results
 
 
-def upload_reports(filenames: list[str]):
-    results = asyncio.run(do_upload_reports(filenames))
+def upload_reports(sheet: Sheet):
+    results = asyncio.run(do_upload_reports(sheet))
     errors = list(filter(lambda r: isinstance(r, Error), results))
 
     if errors:
         return False, errors
 
-    return True, results
+    return True, sheet
 
 
-def share_files(filenames: list[str]):
-    results = asyncio.run(do_share_files(filenames))
+def share_files(sheet: Sheet):
+    results = asyncio.run(do_share_files(sheet))
     errors = list(filter(lambda r: isinstance(r, Error), results))
 
     if errors:
         return False, errors
 
-    return True, results
+    for row, share_url in zip(sheet.rows, results):
+        row.share_url = share_url
+    return True, sheet

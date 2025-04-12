@@ -10,8 +10,17 @@ class File:
 
 
 @dataclass
+class Row:
+    row_number: int
+    values: dict[str, str]
+    docx_filename: str = ""
+    pdf_filename: str = ""
+    share_url: str = ""
+
+
+@dataclass
 class Sheet:
-    rows: list[dict[str, str]]
+    rows: list[Row]
 
 
 @dataclass

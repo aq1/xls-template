@@ -55,7 +55,7 @@ def run(
 
     log(f"Generating Docx. Output dir: {settings.docx_output_dir}")
 
-    ok, filenames = run_format_job(
+    ok, sheet = run_format_job(
         sheet=sheet,
         template_file=template_file,
     )
@@ -64,24 +64,23 @@ def run(
         raise typer.Exit(1)
 
     log(f'Generating PDFs. Output dir: "{settings.output_dir}"')
-    ok, filenames = run_pdf_converter(filenames)
+    ok, sheet = run_pdf_converter(sheet)
     if not ok:
         error(f"Failed to generate PDF")
         raise typer.Exit(1)
 
     log("Uploading PDFs to Yandex Disk.")
-    ok, upload_results = upload_reports(filenames)
+    ok, sheet = upload_reports(sheet)
     if not ok:
         error("Failed to upload reports")
-        for each in upload_results:
+        for each in sheet:
             error(f"\t {each.msg}")
 
     log("Sharing access to uploaded files")
-    ok, urls = share_files(filenames)
-
+    ok, sheet = share_files(sheet)
     log("Saving results to Xlsx")
 
-    save_results_to_xlsx(xlsx, urls)
+    save_results_to_xlsx(xlsx.path, sheet)
     log("[green]Done[/green]")
 
 
