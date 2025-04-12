@@ -8,8 +8,8 @@ from log import log
 from settings import get_settings
 
 
-upload_sem = asyncio.Semaphore(10) 
-share_sem = asyncio.Semaphore(10) 
+upload_sem = asyncio.Semaphore(5) 
+share_sem = asyncio.Semaphore(5) 
 
 
 async def create_dir_if_not_exists(client: httpx.AsyncClient, path: str):
@@ -59,7 +59,7 @@ async def do_upload_reports(sheet: Sheet):
     settings = get_settings()
     headers = {"Authorization": f"OAuth {settings.yandex_token}"}
 
-    async with httpx.AsyncClient(headers=headers) as client:
+    async with httpx.AsyncClient(headers=headers, timeout=None) as client:
         ok, err = await create_dir_if_not_exists(client, settings.yandex_path)
         if ok:
             log(f"Created or found yandex directory {settings.yandex_path}")
@@ -100,7 +100,7 @@ async def do_share_files(sheet: Sheet):
     settings = get_settings()
     headers = {"Authorization": f"OAuth {settings.yandex_token}"}
 
-    async with httpx.AsyncClient(headers=headers) as client:
+    async with httpx.AsyncClient(headers=headers, timeout=None) as client:
         tasks = [
             share_file_worker(client, row.pdf_filename, settings.yandex_path) for row in sheet.rows
         ]
